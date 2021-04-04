@@ -28,7 +28,28 @@ class Point {
 		*/
 	}
 
+	renderCam(cam) {
+		console.log('cx, cy, f', cam.cx, cam.cy, cam.f);
+		let r = {
+			x : (this.x - cam.cx) * cam.f / this.z + cam.cx ,
+			y : (this.y - cam.cy) * cam.f / this.z + cam.cy,
+		};
+		console.log('r', this.x, this.y, this.z, r);
+		return r;
+	}
+
 	
+}
+
+class Camera {
+	f;	
+	cx;
+	cy;
+
+	drawCenter(ctx) {
+		ctx.fillStyle = 'rgb(2, 2, 2)';
+		ctx.fillRect(this.cx, this.cy, 2, 2);
+	}
 }
 
 class Shape {
@@ -37,33 +58,67 @@ class Shape {
 		this.points = pointList;
 	}
 
-	render(ctx) {
+	render(ctx, cam) {
 		console.log(this.points);
 		ctx.beginPath();
-		ctx.fillStyle = 'rgba(255, 3, 39, 0.5)';
-		ctx.moveTo(this.points[0].x, this.points[0].y);
+		ctx.fillStyle = 'rgba(255, 3, 39, 0.333)';
+
+		let p0 = this.points[0].renderCam(cam);
+		ctx.moveTo(p0.x, p0.y);
 		for (let i = 0; i < this.points.length; i++) {
-			ctx.lineTo(this.points[i].x, this.points[i].y);
+			let thisPoint = this.points[i].renderCam(cam);
+			ctx.lineTo(thisPoint.x, thisPoint.y);
 		}
-		ctx.lineTo(this.points[0].x, this.points[0].y);
+		ctx.lineTo(p0.x, p0.y);
 		ctx.fill();
 	}
 	
+	rot(px, py, rd) {
+		this.points.forEach(p => { p.rot(px, py, rd); });
+	}
 
 }
 
-let render = (ctx, els) => {
-	els.forEach(el => el.render(ctx));
+let render = () => {
+	let ctx  = document.getElementById('ctx').getContext('2d');
+	ctx.clearRect(0, 0, 400, 400);
+	let p10 = new Point(80,80,80);
+	let p20 = new Point(160, 80, 80);
+	let p30 = new Point(160, 160, 80);
+	let p40 = new Point(80, 160, 80);
+	
+	let p11 = new Point(80,80, 200);
+	let p21 = new Point(160, 80, 200);
+	let p31 = new Point(160, 160, 200);
+	let p41 = new Point(80, 160, 200);
+
+	let s0 = new Shape([p10, p20, p30, p40]);
+	let s1 = new Shape([p11, p21, p31, p41]);
+
+
+	let cam = new Camera();
+	cam.f = f;
+	cam.cx = cx;
+	cam.cy = cy;
+	cam.drawCenter(ctx);
+	s0.render(ctx, cam);
+	s1.render(ctx, cam);
 }
+
+let f = 80;
+let cx = 120;
+let cy = 120;
 
 window.addEventListener('load', ev => {
+	
+	render();
 
-	let ctx  = document.getElementById('ctx').getContext('2d');
-
-	let p1 = new Point(80,80,80);
-	let p2 = new Point(160, 80, 80);
-	let p3 = new Point(100, 250, 80);
-	let s = new Shape([p1, p2, p3]);
-	s.render(ctx);
-	//render(ctx, [p1, p2]);
+	document.getElementById('fplus').addEventListener('click', ev => {
+		f+=10;
+		render();
+	});
+	document.getElementById('fminus').addEventListener('click', ev => {
+		f-=10;
+		render();
+	});
 });
