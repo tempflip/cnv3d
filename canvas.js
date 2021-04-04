@@ -7,12 +7,18 @@ class Point {
 		this.z = z;
 	}
 
-	rot(px, py, rd) {
-		
+	rotZ(px, py, rd) {
 		let xn = (this.x - px) * Math.cos(rd) - (this.y - py) * Math.sin(rd);
 		let yn = (this.x - px) * Math.sin(rd) + (this.y - py) * Math.cos(rd);
 		this.x = xn + px;
 		this.y = yn + py;
+	}
+	
+	rotY(px, pz, rd) {
+		let xn = (this.x - px) * Math.cos(rd) - (this.z - pz) * Math.sin(rd);
+		let zn = (this.x - px) * Math.sin(rd) + (this.z - pz) * Math.cos(rd);
+		this.x = xn + px;
+		this.z = zn + pz;
 	}
 
 	render(ctx, cam) {
@@ -96,22 +102,6 @@ let render = () => {
 	let ctx  = document.getElementById('ctx').getContext('2d');
 	ctx.clearRect(0, 0, 600, 600);
 
-	
-	/*
-	let p10 = new Point(80,80,80);
-	let p20 = new Point(160, 80, 80);
-	let p30 = new Point(160, 160, 80);
-	let p40 = new Point(80, 160, 80);
-	
-	let p11 = new Point(80,80, 200);
-	let p21 = new Point(160, 80, 200);
-	let p31 = new Point(160, 160, 200);
-	let p41 = new Point(80, 160, 200);
-
-	let s0 = new Shape([p10, p20, p30, p40]);
-	let s1 = new Shape([p11, p21, p31, p41]);
-	*/
-
 	let cam = new Camera();
 	cam.f = f;
 	cam.cx = cx;
@@ -125,9 +115,13 @@ let render = () => {
 	faces.forEach(f => {
 		f.render(ctx, cam);
 	});
-	//s0.render(ctx, cam);
-	//s1.render(ctx, cam);
+
 }
+
+	window.setInterval(() => {
+		rot1();
+		render();
+	}, 500);
 
 let objReader = (fname, m = 200, xa = 20, ya = 20, za = 220) => {
 	// https://people.sc.fsu.edu/~jburkardt/data/obj/obj.html
@@ -181,21 +175,34 @@ let territory = (points) => {
 		if (p.z < zmin) zmin = p.z;
 	});
 	return {xmax : xmax, ymax : ymax, zmax : zmax,
-			xmin : ymin, ymin : ymin, zmin : zmin};
+			xmin : ymin, ymin : ymin, zmin : zmin,
+			xmid : (xmax+xmin) / 2,
+			ymid : (ymax+ymin) / 2,
+			zmid : (zmax+zmin) / 2
+
+			};
 };
+
+let rot1 = () => {
+	points.forEach(f => {
+		f.rotY(ter.xmid, ter.zmid, PI/10);
+	});
+}
 
 let f = 200;
 let cx = 120;
 let cy = 120;
 let points;
 let faces;
+let ter;
 
 window.addEventListener('load', ev => {
 	
-	objReader('teapot.obj', 3, 200, 200, 300).then(obj_ => {
+	objReader('teapot.obj', 3, 200, 200, 350).then(obj_ => {
 		points = obj_.vertices;
 		faces = obj_.faces;
-		console.log('territory', territory(points));
+		ter = territory(points);
+		console.log('territory', ter);
 		render();
 	});
 
@@ -221,6 +228,10 @@ window.addEventListener('load', ev => {
 	});
 	document.getElementById('cyminus').addEventListener('click', ev => {
 		cy-=10;
+		render();
+	});
+	document.getElementById('rot1').addEventListener('click', ev => {
+		rot1();	
 		render();
 	});
 });
