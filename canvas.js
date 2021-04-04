@@ -71,7 +71,7 @@ class Shape {
 	}
 
 	render(ctx, cam) {
-		console.log(this.points);
+		//console.log(this.points);
 		ctx.beginPath();
 		ctx.fillStyle = 'rgba(255, 3, 39, 0.333)';
 
@@ -122,6 +122,9 @@ let render = () => {
 		p.render(ctx, cam);
 	});
 
+	faces.forEach(f => {
+		f.render(ctx, cam);
+	});
 	//s0.render(ctx, cam);
 	//s1.render(ctx, cam);
 }
@@ -132,10 +135,12 @@ let objReader = (fname, m = 200, xa = 20, ya = 20, za = 220) => {
 		fetch(fname)
 		.then(r => r.text())
 		.then(text => {
-			points = [];
+			let vertices = [];
+			let faces = [];
 			text.split('\n').forEach(line => {
 				//console.log(line);
 				let vMatcher = line.match('v  (-?[0-9]+\.[0-9]+) +(-?[0-9]+\.[0-9]+) +(-?[0-9]+\.[0-9]+)');
+				let fMatcher = line.match('f  ([0-9]+) +([0-9]+) +([0-9]+)');
 				if (vMatcher) {
 					let xComp = parseInt(vMatcher[1]);
 					let yComp = parseInt(vMatcher[2]);
@@ -146,11 +151,20 @@ let objReader = (fname, m = 200, xa = 20, ya = 20, za = 220) => {
 										 yComp * m + ya,
 										 zComp * m + za
 								);
-					points.push(p);
+					vertices.push(p);
+				} else if (fMatcher) {
+					let f1 = parseInt(fMatcher[1]);
+					let f2 = parseInt(fMatcher[2]);
+					let f3 = parseInt(fMatcher[3]);
+					//console.log('ff', f1, f2, f3);
+					let face = new Shape([ vertices[f1-1], vertices[f2-1], vertices[f3-1] ]);
+					faces.push(face);
 				}
 			});
-			console.log(points);
-			resolve(points);
+			
+			let r = { vertices : vertices, faces : faces};
+			console.log(r);
+			resolve(r);
 		});
 	});
 	return pr;
@@ -174,11 +188,13 @@ let f = 200;
 let cx = 120;
 let cy = 120;
 let points;
+let faces;
 
 window.addEventListener('load', ev => {
 	
-	objReader('teapot.obj', 3, 200, 200, 300).then(points_ => {
-		points = points_;
+	objReader('teapot.obj', 3, 200, 200, 300).then(obj_ => {
+		points = obj_.vertices;
+		faces = obj_.faces;
 		console.log('territory', territory(points));
 		render();
 	});
