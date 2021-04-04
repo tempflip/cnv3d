@@ -34,7 +34,7 @@ class Point {
 			x : (this.x - cam.cx) * cam.f / this.z + cam.cx ,
 			y : (this.y - cam.cy) * cam.f / this.z + cam.cy,
 		};
-		console.log('r', this.x, this.y, this.z, r);
+		//console.log('r', this.x, this.y, this.z, r);
 		return r;
 	}
 
@@ -57,7 +57,10 @@ class Camera {
 		ctx.fillStyle = 'rgb(2, 2, 2)';
 		ctx.fillRect(this.cx, this.cy, 2, 2);
 		ctx.font = '12px Georgia';
-		ctx.fillText('f = ' + this.f, 10, 10 );
+		ctx.fillText('f = ' + this.f +
+					'\ncx = ' + this.cx +
+					'\ncy = ' + this.cy
+						, 10, 10 );
 	}
 }
 
@@ -91,7 +94,7 @@ class Shape {
 
 let render = () => {
 	let ctx  = document.getElementById('ctx').getContext('2d');
-	ctx.clearRect(0, 0, 400, 400);
+	ctx.clearRect(0, 0, 600, 600);
 
 	
 	/*
@@ -132,13 +135,16 @@ let objReader = (fname, m = 200, xa = 20, ya = 20, za = 220) => {
 			points = [];
 			text.split('\n').forEach(line => {
 				//console.log(line);
-				let vMatcher = line.match('v  ([0-9]+\.[0-9]+).+([0-9]+\.[0-9]+).+([0-9]+\.[0-9]+)');
+				let vMatcher = line.match('v  (-?[0-9]+\.[0-9]+) +(-?[0-9]+\.[0-9]+) +(-?[0-9]+\.[0-9]+)');
 				if (vMatcher) {
-					
-					console.log('l:' , vMatcher[1], vMatcher[2], vMatcher[3]);
-					let p = new Point(parseInt(vMatcher[1]) * m + xa,
-										parseInt(vMatcher[2]) * m + ya,
-										parseInt(vMatcher[3]) * m + za
+					let xComp = parseInt(vMatcher[1]);
+					let yComp = parseInt(vMatcher[2]);
+					let zComp = parseInt(vMatcher[3]);
+
+					//console.log('l:' , xComp, yComp, zComp); 
+					let p = new Point(xComp * m + xa,
+										 yComp * m + ya,
+										 zComp * m + za
 								);
 					points.push(p);
 				}
@@ -150,15 +156,30 @@ let objReader = (fname, m = 200, xa = 20, ya = 20, za = 220) => {
 	return pr;
 };
 
-let f = 80;
+let territory = (points) => {
+	let xmax = -999, ymax= -999, zmax = -999, xmin = 9999, ymin = 9999, zmin = 9999;
+	points.forEach(p => {
+		if (p.x > xmax) xmax = p.x;
+		if (p.y > ymax) ymax = p.y;
+		if (p.z > zmax) zmax = p.z;
+		if (p.x < xmin) xmin = p.x;
+		if (p.y < ymin) ymin = p.y;
+		if (p.z < zmin) zmin = p.z;
+	});
+	return {xmax : xmax, ymax : ymax, zmax : zmax,
+			xmin : ymin, ymin : ymin, zmin : zmin};
+};
+
+let f = 200;
 let cx = 120;
 let cy = 120;
 let points;
 
 window.addEventListener('load', ev => {
 	
-	objReader('cube.obj').then(points_ => {
+	objReader('teapot.obj', 3, 200, 200, 300).then(points_ => {
 		points = points_;
+		console.log('territory', territory(points));
 		render();
 	});
 
