@@ -15,9 +15,9 @@ class Point {
 		this.y = yn + py;
 	}
 
-	render(ctx) {
+	render(ctx, cam) {
 		ctx.fillStyle = 'rgb(200, 0, 30)';
-		ctx.fillRect(this.x, this.y, 30, 30);
+		ctx.fillRect(this.renderCam(cam).x, this.renderCam(cam).y, 5, 5);
 
 		/*
 		ctx.fillStyle = 'rgb(200, 255, 255)';
@@ -29,7 +29,7 @@ class Point {
 	}
 
 	renderCam(cam) {
-		console.log('cx, cy, f', cam.cx, cam.cy, cam.f);
+		//console.log('cx, cy, f', cam.cx, cam.cy, cam.f);
 		let r = {
 			x : (this.x - cam.cx) * cam.f / this.z + cam.cx ,
 			y : (this.y - cam.cy) * cam.f / this.z + cam.cy,
@@ -38,7 +38,14 @@ class Point {
 		return r;
 	}
 
-	
+	renderFlat(cam) {
+		return {
+			x : this.x,
+			y : this.y
+		}
+	}
+
+
 }
 
 class Camera {
@@ -49,6 +56,8 @@ class Camera {
 	drawCenter(ctx) {
 		ctx.fillStyle = 'rgb(2, 2, 2)';
 		ctx.fillRect(this.cx, this.cy, 2, 2);
+		ctx.font = '12px Georgia';
+		ctx.fillText('f = ' + this.f, 10, 10 );
 	}
 }
 
@@ -71,6 +80,7 @@ class Shape {
 		}
 		ctx.lineTo(p0.x, p0.y);
 		ctx.fill();
+		ctx.stroke();
 	}
 	
 	rot(px, py, rd) {
@@ -82,6 +92,9 @@ class Shape {
 let render = () => {
 	let ctx  = document.getElementById('ctx').getContext('2d');
 	ctx.clearRect(0, 0, 400, 400);
+
+	
+	/*
 	let p10 = new Point(80,80,80);
 	let p20 = new Point(160, 80, 80);
 	let p30 = new Point(160, 160, 80);
@@ -94,24 +107,60 @@ let render = () => {
 
 	let s0 = new Shape([p10, p20, p30, p40]);
 	let s1 = new Shape([p11, p21, p31, p41]);
-
+	*/
 
 	let cam = new Camera();
 	cam.f = f;
 	cam.cx = cx;
 	cam.cy = cy;
 	cam.drawCenter(ctx);
-	s0.render(ctx, cam);
-	s1.render(ctx, cam);
+	
+	points.forEach(p => {
+		p.render(ctx, cam);
+	});
+
+	//s0.render(ctx, cam);
+	//s1.render(ctx, cam);
 }
+
+let objReader = (fname, m = 200, xa = 20, ya = 20, za = 220) => {
+	// https://people.sc.fsu.edu/~jburkardt/data/obj/obj.html
+	let pr = new Promise((resolve, reject) => {
+		fetch(fname)
+		.then(r => r.text())
+		.then(text => {
+			points = [];
+			text.split('\n').forEach(line => {
+				//console.log(line);
+				let vMatcher = line.match('v  ([0-9]+\.[0-9]+).+([0-9]+\.[0-9]+).+([0-9]+\.[0-9]+)');
+				if (vMatcher) {
+					
+					console.log('l:' , vMatcher[1], vMatcher[2], vMatcher[3]);
+					let p = new Point(parseInt(vMatcher[1]) * m + xa,
+										parseInt(vMatcher[2]) * m + ya,
+										parseInt(vMatcher[3]) * m + za
+								);
+					points.push(p);
+				}
+			});
+			console.log(points);
+			resolve(points);
+		});
+	});
+	return pr;
+};
 
 let f = 80;
 let cx = 120;
 let cy = 120;
+let points;
 
 window.addEventListener('load', ev => {
 	
-	render();
+	objReader('cube.obj').then(points_ => {
+		points = points_;
+		render();
+	});
 
 	document.getElementById('fplus').addEventListener('click', ev => {
 		f+=10;
@@ -119,6 +168,22 @@ window.addEventListener('load', ev => {
 	});
 	document.getElementById('fminus').addEventListener('click', ev => {
 		f-=10;
+		render();
+	});
+	document.getElementById('cxplus').addEventListener('click', ev => {
+		cx+=10;
+		render();
+	});
+	document.getElementById('cxminus').addEventListener('click', ev => {
+		cx-=10;
+		render();
+	});
+	document.getElementById('cyplus').addEventListener('click', ev => {
+		cy+=10;
+		render();
+	});
+	document.getElementById('cyminus').addEventListener('click', ev => {
+		cy-=10;
 		render();
 	});
 });
