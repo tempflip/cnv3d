@@ -2,25 +2,39 @@ const PI = 3.14159265359;
 
 class Point {
 	constructor(x, y, z) {
-		this.x = x;
-		this.y = y;
-		this.z = z;
+		this.x = parseInt(x);
+		this.y = parseInt(y);
+		this.z = parseInt(z);
 	}
 
-	rotZ(px, py, rd) {
+	rotZ_(px, py, rd) {
 		let xn = (this.x - px) * Math.cos(rd) - (this.y - py) * Math.sin(rd);
 		let yn = (this.x - px) * Math.sin(rd) + (this.y - py) * Math.cos(rd);
-		this.x = xn + px;
-		this.y = yn + py;
+		let x = xn + px;
+		let y = yn + py;
+		return {x : x, y : y, z : this.z};
 	}
+
 	
-	rotY(px, pz, rd) {
+	rotY_(px, pz, rd) {
 		//console.log('old', this.x, this.z);
 		let xn = (this.x - px) * Math.cos(rd) - (this.z - pz) * Math.sin(rd);
 		let zn = (this.x - px) * Math.sin(rd) + (this.z - pz) * Math.cos(rd);
-		this.x = xn + px;
-		this.z = zn + pz;
-		//console.log('new', this.x, this.z);
+		let x = xn + px;
+		let z = zn + pz;
+		return {x : x, y : this.y, z : z};
+	}
+
+	rotZ(px, py, rd) {
+		let newCrd = this.rotZ_(px, py, rd);
+		this.x = newCrd.x;
+		this.y = newCrd.y;
+	}
+
+	rotY(px, pz, rd) {
+		let newCrd = this.rotY_(px, pz, rd);
+		this.x = newCrd.x;
+		this.z = newCrd.z;
 	}
 
 	render(ctx, cam) {
@@ -38,9 +52,14 @@ class Point {
 
 	renderCam(cam) {
 		//console.log('cx, cy, f', cam.cx, cam.cy, cam.f);
+		let camAdjusted = this.rotY_(cam.o.x, cam.o.z, cam.alpha); 
+		let myX = camAdjusted.x;
+		let myY = camAdjusted.y;
+		let myZ = camAdjusted.z;
+
 		let r = {
-			x : (this.x - cam.cx) * cam.f / this.z + cam.cx ,
-			y : (this.y - cam.cy) * cam.f / this.z + cam.cy,
+			x : (myX - cam.cx) * cam.f / myZ + cam.cx ,
+			y : (myY - cam.cy) * cam.f / myZ + cam.cy,
 		};
 		//console.log('r', this.x, this.y, this.z, r);
 		return r;
@@ -70,7 +89,7 @@ class Camera {
 		let tan = opp / adj;
 		let arctan = Math.atan(tan);
 
-		console.log(opp, adj, tan, arctan, arctan * 57.29);
+		//console.log(opp, adj, tan, arctan, arctan * 57.29);
 		return arctan;
 	}
 
@@ -174,14 +193,16 @@ let objReader = (fname, m = 200, xa = 20, ya = 20, za = 220) => {
 			let faces = [];
 			text.split('\n').forEach(line => {
 				//console.log(line);
-				let vMatcher = line.match('v  (-?[0-9]+\.[0-9]+) +(-?[0-9]+\.[0-9]+) +(-?[0-9]+\.[0-9]+)');
+				//let vMatcher = line.match('v  (-?[0-9]+\.[0-9]+) +(-?[0-9]+\.[0-9]+) +(-?[0-9]+\.[0-9]+)');
+				let vMatcher = line.match('v  (-?[0-9]+(\.[0-9]+)?) +(-?[0-9]+(\.[0-9]+)?) +(-?[0-9]+(\.[0-9]+)?)');
 				let fMatcher = line.match('f  ([0-9]+) +([0-9]+) +([0-9]+)');
 				if (vMatcher) {
-					let xComp = parseInt(vMatcher[1]);
-					let yComp = parseInt(vMatcher[2]);
-					let zComp = parseInt(vMatcher[3]);
+					//console.log(vMatcher);
+					let xComp = vMatcher[1];
+					let yComp = vMatcher[3];
+					let zComp = vMatcher[5];
 
-					//console.log('l:' , xComp, yComp, zComp); 
+					//console.log('v:' , xComp, yComp, zComp); 
 					let p = new Point(xComp * m + xa,
 										 yComp * m + ya,
 										 zComp * m + za
@@ -191,7 +212,7 @@ let objReader = (fname, m = 200, xa = 20, ya = 20, za = 220) => {
 					let f1 = parseInt(fMatcher[1]);
 					let f2 = parseInt(fMatcher[2]);
 					let f3 = parseInt(fMatcher[3]);
-					//console.log('ff', f1, f2, f3);
+					//console.log('f', f1, f2, f3);
 					let face = new Shape([ vertices[f1-1], vertices[f2-1], vertices[f3-1] ]);
 					faces.push(face);
 				}
@@ -247,6 +268,8 @@ cam.fp = fp;
 window.addEventListener('load', ev => {
 	
 	objReader('teapot.obj', 3, 400, 400, 400).then(obj_ => {
+	//objReader('violin_case.obj', 3, 400, 400, 400).then(obj_ => {
+	//objReader('icosahedron.obj', 100, 400, 400, 400).then(obj_ => {
 		points = obj_.vertices;
 		faces = obj_.faces;
 		ter = territory(points);
@@ -284,6 +307,10 @@ window.addEventListener('load', ev => {
 	});
 	document.getElementById('rotcam').addEventListener('click', ev => {
 		cam.rotAroundFocal(PI/40);	
+		render();
+	});
+	document.getElementById('rotcam2').addEventListener('click', ev => {
+		cam.rotAroundFocal(PI/-40);	
 		render();
 	});
 });
