@@ -15,10 +15,12 @@ class Point {
 	}
 	
 	rotY(px, pz, rd) {
+		//console.log('old', this.x, this.z);
 		let xn = (this.x - px) * Math.cos(rd) - (this.z - pz) * Math.sin(rd);
 		let zn = (this.x - px) * Math.sin(rd) + (this.z - pz) * Math.cos(rd);
 		this.x = xn + px;
 		this.z = zn + pz;
+		//console.log('new', this.x, this.z);
 	}
 
 	render(ctx, cam) {
@@ -43,11 +45,16 @@ class Point {
 		//console.log('r', this.x, this.y, this.z, r);
 		return r;
 	}
-
-	renderFlat(cam) {
+	
+	renderTop(ctx) {
+		ctx.fillStyle = 'rgb(200, 100, 130)';
+		ctx.fillRect(this.renderTop_().x, this.renderTop_().y, 5, 5);
+	}
+	
+	renderTop_() {
 		return {
 			x : this.x,
-			y : this.y
+			y : this.z
 		}
 	}
 
@@ -55,9 +62,24 @@ class Point {
 }
 
 class Camera {
-	f;	
-	cx;
-	cy;
+	o;
+	fp;
+	get alpha() {
+		let opp = parseInt(this.fp.x - this.o.x);
+		let adj = parseInt(this.fp.z - this.o.z);
+		let tan = opp / adj;
+		let arctan = Math.atan(tan);
+
+		console.log(opp, adj, tan, arctan, arctan * 57.29);
+		return arctan;
+	}
+
+	get f() {
+		return Math.sqrt((this.o.x - this.fp.x)**2 + (this.o.z - this.fp.z)**2);
+	}
+	get cx() { return this.o.x; }
+	get cy() { return this.o.y; }
+	get cz() { return this.o.z; }
 
 	drawCenter(ctx) {
 		ctx.fillStyle = 'rgb(2, 2, 2)';
@@ -67,6 +89,25 @@ class Camera {
 					'\ncx = ' + this.cx +
 					'\ncy = ' + this.cy
 						, 10, 10 );
+	}
+
+	drawCamLine(ctx) {
+		console.log('camline', this.cx, this.cz, this.fx, this.fz, ctx);
+
+		ctx.fillStyle = 'rgb(2, 222, 2)'; // green : O
+		ctx.fillRect(this.cx, this.cz, 20, 20);
+		ctx.fillStyle = 'rgb(222, 2, 2)';
+		ctx.fillRect(this.fp.x, this.fp.z, 20, 20); // red : focal
+		ctx.beginPath();
+		ctx.moveTo(this.cx, this.cz);
+		ctx.moveTo(this.fp.x, this.fp.z);
+		ctx.stroke();
+		ctx.font = '12px Georgia';
+		ctx.fillText('alpha = ' + this.alpha * 57.29  , 20, 20);
+	}
+	
+	rotAroundFocal(rd) {
+		this.o.rotY(this.fp.x, this.fp.z, rd);
 	}
 }
 
@@ -100,16 +141,16 @@ class Shape {
 
 let render = () => {
 	let ctx  = document.getElementById('ctx').getContext('2d');
-	ctx.clearRect(0, 0, 600, 600);
+	let topview= document.getElementById('topview').getContext('2d');
+	ctx.clearRect(0, 0, 900, 800);
+	topview.clearRect(0, 0, 900, 800);
 
-	let cam = new Camera();
-	cam.f = f;
-	cam.cx = cx;
-	cam.cy = cy;
 	cam.drawCenter(ctx);
-	
+	cam.drawCamLine(topview);
+
 	points.forEach(p => {
 		p.render(ctx, cam);
+		p.renderTop(topview);
 	});
 
 	faces.forEach(f => {
@@ -117,11 +158,11 @@ let render = () => {
 	});
 
 }
+	/*window.setInterval(() => {
 
-	window.setInterval(() => {
 		rot1();
 		render();
-	}, 500);
+	}, 100);*/
 
 let objReader = (fname, m = 200, xa = 20, ya = 20, za = 220) => {
 	// https://people.sc.fsu.edu/~jburkardt/data/obj/obj.html
@@ -185,24 +226,31 @@ let territory = (points) => {
 
 let rot1 = () => {
 	points.forEach(f => {
-		f.rotY(ter.xmid, ter.zmid, PI/10);
+		f.rotY(ter.xmid, ter.zmid, PI/19);
+		f.rotZ(ter.xmid, ter.ymid, PI/24);
 	});
 }
 
-let f = 200;
-let cx = 120;
-let cy = 120;
+let cx = 400;
+let cy = 400;
+let cz = 0;
 let points;
 let faces;
 let ter;
+let o = new Point(cx, cy, cz);
+let fp = new Point(cx, cy, cz + 300);
+let cam = new Camera();
+cam.o = o; 
+cam.fp = fp;
+
 
 window.addEventListener('load', ev => {
 	
-	objReader('teapot.obj', 3, 200, 200, 350).then(obj_ => {
+	objReader('teapot.obj', 3, 400, 400, 400).then(obj_ => {
 		points = obj_.vertices;
 		faces = obj_.faces;
 		ter = territory(points);
-		console.log('territory', ter);
+		console.log('# territory', ter);
 		render();
 	});
 
@@ -215,23 +263,27 @@ window.addEventListener('load', ev => {
 		render();
 	});
 	document.getElementById('cxplus').addEventListener('click', ev => {
-		cx+=10;
+		o.x+=10;
 		render();
 	});
 	document.getElementById('cxminus').addEventListener('click', ev => {
-		cx-=10;
+		o.x-=10;
 		render();
 	});
 	document.getElementById('cyplus').addEventListener('click', ev => {
-		cy+=10;
+		//o.x+=10;
 		render();
 	});
 	document.getElementById('cyminus').addEventListener('click', ev => {
-		cy-=10;
+		//cy-=10;
 		render();
 	});
 	document.getElementById('rot1').addEventListener('click', ev => {
 		rot1();	
+		render();
+	});
+	document.getElementById('rotcam').addEventListener('click', ev => {
+		cam.rotAroundFocal(PI/40);	
 		render();
 	});
 });
